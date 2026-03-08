@@ -1,0 +1,356 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Results — QuizForge</title>
+<link rel="stylesheet" href="../css/style.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
+<style>
+  .page-wrap { padding-top: 88px; padding-bottom: 60px; }
+
+  /* Score hero */
+  .score-hero {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    padding: 40px;
+    text-align: center;
+    margin-bottom: 24px;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .score-hero::before {
+    content: '';
+    position: absolute;
+    width: 300px; height: 300px;
+    border-radius: 50%;
+    background: radial-gradient(circle, rgba(108,99,255,0.1) 0%, transparent 70%);
+    top: 50%; left: 50%;
+    transform: translate(-50%,-50%);
+    pointer-events: none;
+  }
+
+  .score-ring {
+    width: 140px; height: 140px;
+    margin: 0 auto 24px;
+    position: relative;
+  }
+
+  .score-ring canvas { width: 100% !important; height: 100% !important; }
+
+  .score-ring-text {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .score-pct {
+    font-family: 'Clash Display', sans-serif;
+    font-size: 36px;
+    font-weight: 700;
+    line-height: 1;
+  }
+
+  .score-sub {
+    font-size: 11px;
+    color: var(--text3);
+    font-family: 'JetBrains Mono', monospace;
+  }
+
+  .score-message {
+    font-family: 'Clash Display', sans-serif;
+    font-size: 26px;
+    font-weight: 700;
+    margin-bottom: 8px;
+  }
+
+  .score-detail { color: var(--text2); font-size: 15px; margin-bottom: 20px; }
+
+  /* Suggestion card */
+  .suggestion-card {
+    background: rgba(67,232,176,0.06);
+    border: 1px solid rgba(67,232,176,0.2);
+    border-radius: var(--radius);
+    padding: 16px 20px;
+    margin: 20px 0 0;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    text-align: left;
+  }
+
+  .suggestion-card .icon { font-size: 24px; flex-shrink: 0; }
+  .suggestion-card p { font-size: 14px; color: var(--accent3); line-height: 1.4; }
+  .suggestion-card strong { display: block; font-size: 15px; margin-bottom: 2px; color: var(--text); }
+
+  /* Results breakdown */
+  .result-item {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 20px;
+    margin-bottom: 12px;
+    animation: fadeUp 0.4s ease both;
+  }
+
+  .result-item.correct-item { border-left: 3px solid var(--correct); }
+  .result-item.wrong-item { border-left: 3px solid var(--wrong); }
+  .result-item.skip-item { border-left: 3px solid var(--text3); }
+
+  .result-header {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    margin-bottom: 12px;
+  }
+
+  .result-icon {
+    width: 28px; height: 28px;
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 14px;
+    flex-shrink: 0;
+  }
+
+  .result-icon.c { background: rgba(34,197,94,0.15); }
+  .result-icon.w { background: rgba(239,68,68,0.15); }
+  .result-icon.s { background: rgba(90,90,114,0.15); }
+
+  .result-q { font-size: 15px; font-weight: 500; line-height: 1.4; }
+  .result-num { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--text3); margin-bottom: 4px; }
+
+  .answers-row {
+    display: flex;
+    gap: 16px;
+    flex-wrap: wrap;
+    font-size: 13px;
+  }
+
+  .ans-chip {
+    padding: 6px 12px;
+    border-radius: 6px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+  }
+
+  .ans-chip.user-correct { background: rgba(34,197,94,0.1); color: #86efac; }
+  .ans-chip.user-wrong { background: rgba(239,68,68,0.1); color: #fca5a5; }
+  .ans-chip.correct-ans { background: rgba(34,197,94,0.1); color: #86efac; }
+
+  .result-exp {
+    margin-top: 10px;
+    padding: 10px 14px;
+    background: rgba(108,99,255,0.05);
+    border-left: 2px solid var(--accent);
+    border-radius: 0 6px 6px 0;
+    font-size: 13px;
+    color: var(--text2);
+    line-height: 1.5;
+  }
+
+  .actions { display: flex; gap: 12px; flex-wrap: wrap; margin-top: 24px; }
+</style>
+</head>
+<body>
+
+<nav class="navbar">
+  <a class="nav-logo" href="/"><span>Quiz</span><span class="dot">Forge</span></a>
+  <div class="nav-links">
+    <a href="/dashboard.html" class="nav-btn nav-btn-ghost">← Dashboard</a>
+    <a href="/create_quiz.html" class="nav-btn nav-btn-primary">New Quiz</a>
+  </div>
+</nav>
+
+<div class="page-wrap">
+  <div class="container-md">
+
+    <!-- Score hero -->
+    <div class="score-hero" id="score-hero">
+      <div class="score-ring">
+        <canvas id="ring-chart"></canvas>
+        <div class="score-ring-text">
+          <span class="score-pct" id="score-pct">—</span>
+          <span class="score-sub">SCORE</span>
+        </div>
+      </div>
+
+      <div class="score-message" id="score-msg">—</div>
+      <div class="score-detail" id="score-detail">—</div>
+      <div id="meta-badges" style="display:flex;gap:8px;justify-content:center;flex-wrap:wrap"></div>
+
+      <div class="suggestion-card" id="suggestion-card" style="display:none">
+        <div class="icon">🎯</div>
+        <div>
+          <strong id="sug-title">—</strong>
+          <p id="sug-msg">—</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Stats row -->
+    <div class="stats-grid" style="margin-bottom:24px">
+      <div class="stat-card">
+        <div class="stat-number" id="r-correct" style="color:var(--correct)">—</div>
+        <div class="stat-label">Correct</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-number" id="r-wrong" style="color:var(--wrong)">—</div>
+        <div class="stat-label">Wrong</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-number" id="r-skip" style="color:var(--text3)">—</div>
+        <div class="stat-label">Skipped</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-number" id="r-total" style="color:var(--accent)">—</div>
+        <div class="stat-label">Total</div>
+      </div>
+    </div>
+
+    <!-- Breakdown -->
+    <h3 style="font-family:'Clash Display',sans-serif;font-size:20px;font-weight:700;margin-bottom:16px">Question Breakdown</h3>
+
+    <div id="results-list"></div>
+
+    <div class="actions">
+      <a href="/create_quiz.html" class="btn btn-primary btn-lg">⚡ New Quiz</a>
+      <a href="/dashboard.html" class="btn btn-ghost btn-lg">View Dashboard</a>
+    </div>
+
+  </div>
+</div>
+
+<script src="../js/api.js"></script>
+<script>
+  requireAuth();
+
+  // Load from session (just taken) or URL param (from history)
+  const urlId = new URLSearchParams(location.search).get("id");
+  let resultData = null;
+
+  async function loadResult() {
+    if (urlId) {
+      const res = await apiFetch(`/dashboard/quiz/${urlId}`);
+      if (res?.ok) {
+        const q = res.data;
+        resultData = {
+          score: q.score,
+          correct: q.correct,
+          total: q.total,
+          results: q.results,
+          difficulty: q.difficulty,
+          topic: q.topic,
+          suggestion: null
+        };
+      }
+    } else {
+      const raw = sessionStorage.getItem("qf_result");
+      if (raw) resultData = JSON.parse(raw);
+    }
+
+    if (!resultData) {
+      window.location.href = "/dashboard.html";
+      return;
+    }
+
+    renderResult();
+  }
+
+  function renderResult() {
+    const { score, correct, total, results, difficulty, topic, suggestion } = resultData;
+    const wrong = results.filter(r => r.user_answer && !r.is_correct).length;
+    const skipped = results.filter(r => !r.user_answer).length;
+
+    // Ring chart
+    const ringCtx = document.getElementById("ring-chart").getContext("2d");
+    const ringColor = score >= 70 ? "#22c55e" : score >= 40 ? "#fbbf24" : "#ef4444";
+    new Chart(ringCtx, {
+      type: "doughnut",
+      data: {
+        datasets: [{
+          data: [score, 100 - score],
+          backgroundColor: [ringColor, "#1e1e2a"],
+          borderWidth: 0,
+          circumference: 360
+        }]
+      },
+      options: {
+        cutout: "75%",
+        plugins: { legend: { display: false }, tooltip: { enabled: false } },
+        animation: { duration: 800, easing: "easeOutQuart" }
+      }
+    });
+
+    document.getElementById("score-pct").textContent = score + "%";
+    document.getElementById("score-pct").style.color = ringColor;
+
+    const msgs = {
+      100: ["🏆 Perfect!", "Flawless. You nailed every single question."],
+      80: ["🎯 Excellent!", "Really strong performance — well done!"],
+      60: ["📚 Good Job!", "Solid effort. A bit more practice and you'll master this."],
+      40: ["💪 Keep Going!", "You're getting there. Review and try again."],
+      0: ["🔄 Need Practice", "Don't give up — review the material and retake!"]
+    };
+
+    const msgKey = score === 100 ? 100 : score >= 80 ? 80 : score >= 60 ? 60 : score >= 40 ? 40 : 0;
+    document.getElementById("score-msg").textContent = msgs[msgKey][0];
+    document.getElementById("score-detail").textContent = msgs[msgKey][1];
+
+    document.getElementById("r-correct").textContent = correct;
+    document.getElementById("r-wrong").textContent = wrong;
+    document.getElementById("r-skip").textContent = skipped;
+    document.getElementById("r-total").textContent = total;
+
+    document.getElementById("meta-badges").innerHTML = `
+      <span class="badge badge-${difficulty}">${difficulty}</span>
+      ${topic ? `<span class="badge" style="background:var(--surface2);border:1px solid var(--border2);color:var(--text2)">${topic}</span>` : ""}
+      <span class="badge" style="background:var(--surface2);border:1px solid var(--border2);color:var(--text2)">${correct}/${total} correct</span>
+    `;
+
+    if (suggestion) {
+      document.getElementById("sug-title").textContent = "Level Up Suggestion";
+      document.getElementById("sug-msg").textContent = suggestion.message;
+      document.getElementById("suggestion-card").style.display = "flex";
+    }
+
+    // Question breakdown
+    const list = document.getElementById("results-list");
+    list.innerHTML = results.map((r, i) => {
+      const status = !r.user_answer ? "skip" : r.is_correct ? "correct" : "wrong";
+      const icon = status === "correct" ? "✓" : status === "wrong" ? "✗" : "—";
+      const iconClass = status === "correct" ? "c" : status === "wrong" ? "w" : "s";
+
+      let answersHTML = "";
+      if (status === "skip") {
+        answersHTML = `<span class="ans-chip" style="background:var(--surface3);color:var(--text3)">Skipped</span>
+          <span class="ans-chip correct-ans">✓ ${r.correct_answer}</span>`;
+      } else if (r.is_correct) {
+        answersHTML = `<span class="ans-chip user-correct">✓ Your answer: ${r.user_answer}</span>`;
+      } else {
+        answersHTML = `<span class="ans-chip user-wrong">✗ Your answer: ${r.user_answer}</span>
+          <span class="ans-chip correct-ans">✓ Correct: ${r.correct_answer}</span>`;
+      }
+
+      return `<div class="result-item ${status}-item" style="animation-delay:${i * 0.06}s">
+        <div class="result-header">
+          <div class="result-icon ${iconClass}">${icon}</div>
+          <div style="flex:1">
+            <div class="result-num">Q${i + 1}</div>
+            <div class="result-q">${r.question}</div>
+          </div>
+        </div>
+        <div class="answers-row">${answersHTML}</div>
+        ${r.explanation ? `<div class="result-exp">💡 ${r.explanation}</div>` : ""}
+      </div>`;
+    }).join("");
+  }
+
+  loadResult();
+</script>
+</body>
+</html>

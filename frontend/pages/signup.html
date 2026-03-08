@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Sign Up — QuizForge</title>
+<link rel="stylesheet" href="../css/style.css">
+<style>
+  body { display: flex; align-items: center; justify-content: center; min-height: 100vh; padding: 24px; }
+  .auth-wrap { width: 100%; max-width: 440px; animation: fadeUp 0.5s ease both; }
+  .auth-logo { text-align: center; margin-bottom: 36px; }
+  .auth-logo a { font-family: 'Clash Display', sans-serif; font-size: 28px; font-weight: 700; color: var(--text); text-decoration: none; }
+  .auth-logo .dot { color: var(--accent); }
+  .auth-logo p { color: var(--text3); font-size: 14px; margin-top: 6px; }
+  .auth-card { background: var(--surface); border: 1px solid var(--border); border-radius: 20px; padding: 36px; }
+  .auth-title { font-family: 'Clash Display', sans-serif; font-size: 26px; font-weight: 700; margin-bottom: 6px; }
+  .auth-subtitle { color: var(--text2); font-size: 14px; margin-bottom: 28px; }
+  .auth-footer { text-align: center; margin-top: 20px; font-size: 14px; color: var(--text2); }
+  .auth-footer a { color: var(--accent); text-decoration: none; }
+  body::before { content: ''; position: fixed; inset: 0; background: radial-gradient(ellipse 500px 400px at 80% 50%, rgba(108,99,255,0.07) 0%, transparent 70%), radial-gradient(ellipse 400px 300px at 20% 50%, rgba(67,232,176,0.05) 0%, transparent 70%); pointer-events: none; }
+</style>
+</head>
+<body>
+<div class="auth-wrap">
+  <div class="auth-logo">
+    <a href="/"><span>Quiz</span><span class="dot">Forge</span></a>
+    <p>Create your free account</p>
+  </div>
+
+  <div class="auth-card">
+    <h1 class="auth-title">Get started</h1>
+    <p class="auth-subtitle">Free forever. No credit card needed.</p>
+
+    <div id="alert" class="alert alert-error"></div>
+
+    <div class="field">
+      <label class="label">Full Name</label>
+      <input type="text" id="name" placeholder="Your name" autocomplete="name">
+    </div>
+
+    <div class="field">
+      <label class="label">Email</label>
+      <input type="email" id="email" placeholder="you@example.com" autocomplete="email">
+    </div>
+
+    <div class="field">
+      <label class="label">Password</label>
+      <input type="password" id="password" placeholder="Min. 6 characters" autocomplete="new-password">
+    </div>
+
+    <button class="btn btn-primary btn-full btn-lg" id="signup-btn" onclick="doSignup()">
+      Create Account →
+    </button>
+  </div>
+
+  <div class="auth-footer">
+    Already have an account? <a href="/login.html">Log in</a>
+  </div>
+</div>
+
+<script src="../js/api.js"></script>
+<script>
+  redirectIfAuth();
+
+  document.addEventListener("keydown", e => { if (e.key === "Enter") doSignup(); });
+
+  async function doSignup() {
+    const name = document.getElementById("name").value.trim();
+    const email = document.getElementById("email").value.trim();
+    const password = document.getElementById("password").value;
+
+    if (!name || !email || !password) return showAlert("alert", "Please fill in all fields.");
+    if (password.length < 6) return showAlert("alert", "Password must be at least 6 characters.");
+
+    setLoading("signup-btn", true, "Creating account...");
+    const res = await apiFetch("/auth/signup", {
+      method: "POST",
+      body: JSON.stringify({ name, email, password })
+    });
+    setLoading("signup-btn", false, "Create Account →");
+
+    if (!res || !res.ok) {
+      showAlert("alert", res?.data?.error || "Signup failed");
+    } else {
+      setAuth(res.data.token, res.data.name, res.data.email);
+      window.location.href = "/dashboard.html";
+    }
+  }
+</script>
+</body>
+</html>

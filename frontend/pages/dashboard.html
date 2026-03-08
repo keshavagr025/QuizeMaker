@@ -1,0 +1,320 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Dashboard — QuizForge</title>
+<link rel="stylesheet" href="../css/style.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
+<style>
+  .page-wrap { padding-top: 88px; padding-bottom: 60px; }
+
+  .dashboard-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+    margin-bottom: 24px;
+  }
+
+  @media (max-width: 768px) { .dashboard-grid { grid-template-columns: 1fr; } }
+
+  .chart-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 24px;
+  }
+
+  .chart-title {
+    font-family: 'Clash Display', sans-serif;
+    font-size: 16px;
+    font-weight: 600;
+    margin-bottom: 20px;
+    color: var(--text2);
+  }
+
+  /* History table */
+  .history-table { width: 100%; border-collapse: collapse; }
+  .history-table th {
+    text-align: left;
+    font-size: 11px;
+    font-weight: 500;
+    color: var(--text3);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    padding: 10px 16px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .history-table td {
+    padding: 14px 16px;
+    font-size: 14px;
+    border-bottom: 1px solid var(--border);
+    vertical-align: middle;
+  }
+
+  .history-table tr:last-child td { border-bottom: none; }
+  .history-table tr:hover td { background: var(--surface2); }
+
+  .score-pill {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 52px;
+    height: 28px;
+    border-radius: 100px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 13px;
+    font-weight: 500;
+  }
+
+  .score-high { background: rgba(34,197,94,0.12); color: #86efac; }
+  .score-mid { background: rgba(251,191,36,0.12); color: var(--accent4); }
+  .score-low { background: rgba(239,68,68,0.12); color: #fca5a5; }
+
+  .empty-state {
+    text-align: center;
+    padding: 60px 20px;
+    color: var(--text3);
+  }
+
+  .empty-state .icon { font-size: 48px; margin-bottom: 16px; }
+  .empty-state h3 { font-size: 18px; color: var(--text2); margin-bottom: 8px; }
+
+  .user-greeting { font-family: 'Clash Display', sans-serif; font-size: 14px; font-weight: 500; color: var(--text2); }
+  .user-greeting strong { color: var(--text); }
+
+  .nav-user { display: flex; align-items: center; gap: 12px; }
+
+  .stat-number.accent { color: var(--accent); }
+  .stat-number.green { color: var(--accent3); }
+  .stat-number.yellow { color: var(--accent4); }
+  .stat-number.pink { color: var(--accent2); }
+
+  .topic-text { max-width: 180px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--text); }
+  .date-text { color: var(--text3); font-size: 13px; }
+
+  .btn-view { padding: 5px 12px; font-size: 12px; border-radius: 6px; }
+</style>
+</head>
+<body>
+
+<nav class="navbar">
+  <a class="nav-logo" href="/"><span>Quiz</span><span class="dot">Forge</span></a>
+  <div class="nav-links">
+    <div class="nav-user">
+      <span class="user-greeting">Hi, <strong id="nav-name">—</strong></span>
+      <a href="/create_quiz.html" class="nav-btn nav-btn-primary">+ New Quiz</a>
+      <button class="nav-btn nav-btn-ghost" onclick="logout()">Logout</button>
+    </div>
+  </div>
+</nav>
+
+<div class="page-wrap">
+  <div class="container">
+
+    <div class="page-header">
+      <h1 class="page-title">Dashboard</h1>
+      <p class="page-subtitle">Your learning progress at a glance</p>
+    </div>
+
+    <!-- Stats -->
+    <div class="stats-grid" id="stats-grid">
+      <div class="stat-card">
+        <div class="stat-number accent" id="stat-total">—</div>
+        <div class="stat-label">Quizzes Taken</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-number green" id="stat-avg">—</div>
+        <div class="stat-label">Avg Score</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-number yellow" id="stat-best">—</div>
+        <div class="stat-label">Best Score</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-number pink" id="stat-correct">—</div>
+        <div class="stat-label">Total Correct</div>
+      </div>
+    </div>
+
+    <!-- Charts -->
+    <div class="dashboard-grid" id="charts-section" style="display:none">
+      <div class="chart-card">
+        <div class="chart-title">📈 Score Trend</div>
+        <canvas id="trendChart" height="200"></canvas>
+      </div>
+      <div class="chart-card">
+        <div class="chart-title">🎯 By Difficulty</div>
+        <canvas id="diffChart" height="200"></canvas>
+      </div>
+    </div>
+
+    <!-- History -->
+    <div class="card" style="padding:0;overflow:hidden">
+      <div style="padding:20px 24px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between">
+        <h3 style="font-family:'Clash Display',sans-serif;font-size:18px;font-weight:600">Quiz History</h3>
+        <a href="/create_quiz.html" class="btn btn-outline" style="padding:8px 16px;font-size:13px">+ New Quiz</a>
+      </div>
+
+      <div id="history-container">
+        <div class="empty-state">
+          <div class="icon">📋</div>
+          <h3>Loading...</h3>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<script src="../js/api.js"></script>
+<script>
+  requireAuth();
+  document.getElementById("nav-name").textContent = getUserName();
+
+  function logout() {
+    clearAuth();
+    window.location.href = "/";
+  }
+
+  async function loadDashboard() {
+    const [analyticsRes, historyRes] = await Promise.all([
+      apiFetch("/dashboard/analytics"),
+      apiFetch("/dashboard/history")
+    ]);
+
+    if (analyticsRes?.ok && !analyticsRes.data.empty) {
+      const d = analyticsRes.data;
+      document.getElementById("stat-total").textContent = d.total_quizzes;
+      document.getElementById("stat-avg").textContent = d.avg_score + "%";
+      document.getElementById("stat-best").textContent = d.best_score + "%";
+      document.getElementById("stat-correct").textContent = d.total_correct + "/" + d.total_questions;
+
+      document.getElementById("charts-section").style.display = "grid";
+      renderCharts(d);
+    } else {
+      document.getElementById("stat-total").textContent = "0";
+      document.getElementById("stat-avg").textContent = "0%";
+      document.getElementById("stat-best").textContent = "0%";
+      document.getElementById("stat-correct").textContent = "0/0";
+    }
+
+    if (historyRes?.ok) {
+      renderHistory(historyRes.data);
+    }
+  }
+
+  function renderCharts(d) {
+    const chartDefaults = {
+      color: "#9898b0",
+      borderColor: "#252535",
+    };
+    Chart.defaults.color = "#9898b0";
+
+    // Trend chart
+    const trendCtx = document.getElementById("trendChart").getContext("2d");
+    new Chart(trendCtx, {
+      type: "line",
+      data: {
+        labels: d.score_trend.map(x => x.date),
+        datasets: [{
+          label: "Score %",
+          data: d.score_trend.map(x => x.score),
+          borderColor: "#6c63ff",
+          backgroundColor: "rgba(108,99,255,0.1)",
+          fill: true,
+          tension: 0.4,
+          pointBackgroundColor: "#6c63ff",
+          pointRadius: 4
+        }]
+      },
+      options: {
+        responsive: true,
+        plugins: { legend: { display: false } },
+        scales: {
+          y: { min: 0, max: 100, grid: { color: "#1e1e2a" }, ticks: { callback: v => v + "%" } },
+          x: { grid: { color: "#1e1e2a" } }
+        }
+      }
+    });
+
+    // Difficulty chart
+    const diffCtx = document.getElementById("diffChart").getContext("2d");
+    const diffData = d.difficulty_breakdown;
+    const labels = Object.keys(diffData);
+    const avgs = labels.map(k => diffData[k].avg);
+    const colors = { easy: "#43e8b0", medium: "#6c63ff", hard: "#ff6584" };
+
+    new Chart(diffCtx, {
+      type: "bar",
+      data: {
+        labels: labels.map(l => l.charAt(0).toUpperCase() + l.slice(1)),
+        datasets: [{
+          label: "Avg Score",
+          data: avgs,
+          backgroundColor: labels.map(l => colors[l] || "#6c63ff"),
+          borderRadius: 8,
+          borderSkipped: false
+        }]
+      },
+      options: {
+        responsive: true,
+        plugins: { legend: { display: false } },
+        scales: {
+          y: { min: 0, max: 100, grid: { color: "#1e1e2a" }, ticks: { callback: v => v + "%" } },
+          x: { grid: { display: false } }
+        }
+      }
+    });
+  }
+
+  function renderHistory(quizzes) {
+    const container = document.getElementById("history-container");
+    if (!quizzes.length) {
+      container.innerHTML = `
+        <div class="empty-state">
+          <div class="icon">🎯</div>
+          <h3>No quizzes yet</h3>
+          <p style="margin-bottom:20px">Take your first quiz to see history here</p>
+          <a href="/create_quiz.html" class="btn btn-primary">Create Quiz →</a>
+        </div>`;
+      return;
+    }
+
+    const rows = quizzes.map(q => {
+      const score = q.score ?? 0;
+      const scoreClass = score >= 70 ? "score-high" : score >= 40 ? "score-mid" : "score-low";
+      const date = q.completed_at ? new Date(q.completed_at).toLocaleDateString("en-IN", { day:"numeric", month:"short" }) : "—";
+      const diffBadge = `<span class="badge badge-${q.difficulty}">${q.difficulty}</span>`;
+      const typeBadge = `<span class="badge badge-${q.quiz_type}">${q.quiz_type === "mcq" ? "MCQ" : "Fill"}</span>`;
+
+      return `<tr>
+        <td><div class="topic-text">${q.topic || "General"}</div></td>
+        <td>${diffBadge}</td>
+        <td>${typeBadge}</td>
+        <td><span class="score-pill ${scoreClass}">${score}%</span></td>
+        <td><span class="mono" style="font-size:13px">${q.correct ?? 0}/${q.total ?? 0}</span></td>
+        <td><span class="date-text">${date}</span></td>
+        <td><a href="/results.html?id=${q._id}" class="btn btn-ghost btn-view">View →</a></td>
+      </tr>`;
+    }).join("");
+
+    container.innerHTML = `
+      <div style="overflow-x:auto">
+        <table class="history-table">
+          <thead>
+            <tr>
+              <th>Topic</th><th>Difficulty</th><th>Type</th>
+              <th>Score</th><th>Correct</th><th>Date</th><th></th>
+            </tr>
+          </thead>
+          <tbody>${rows}</tbody>
+        </table>
+      </div>`;
+  }
+
+  loadDashboard();
+</script>
+</body>
+</html>

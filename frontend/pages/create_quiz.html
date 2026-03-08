@@ -1,0 +1,314 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Create Quiz — QuizForge</title>
+<link rel="stylesheet" href="../css/style.css">
+<style>
+  .page-wrap { padding-top: 88px; padding-bottom: 60px; }
+
+  .input-tabs {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 16px;
+    background: var(--surface2);
+    padding: 5px;
+    border-radius: 12px;
+    border: 1px solid var(--border);
+    width: fit-content;
+  }
+
+  .tab-btn {
+    padding: 9px 20px;
+    border-radius: 8px;
+    border: none;
+    background: transparent;
+    color: var(--text2);
+    font-family: 'Satoshi', sans-serif;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+
+  .tab-btn.active {
+    background: var(--surface);
+    color: var(--text);
+    border: 1px solid var(--border2);
+    box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+  }
+
+  .tab-pane { display: none; }
+  .tab-pane.active { display: block; }
+
+  /* Quiz type selector */
+  .type-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+
+  .type-card {
+    padding: 18px;
+    border: 2px solid var(--border);
+    border-radius: var(--radius);
+    cursor: pointer;
+    transition: all 0.2s;
+    background: var(--surface2);
+  }
+
+  .type-card:hover { border-color: var(--border2); }
+  .type-card.selected { border-color: var(--accent); background: rgba(108,99,255,0.06); }
+
+  .type-card .icon { font-size: 28px; margin-bottom: 10px; }
+  .type-card .title { font-family: 'Clash Display', sans-serif; font-size: 16px; font-weight: 600; margin-bottom: 4px; }
+  .type-card .desc { font-size: 12px; color: var(--text3); }
+
+  /* Difficulty pills */
+  .diff-pills { display: flex; gap: 8px; }
+  .diff-pill {
+    flex: 1; padding: 10px; border-radius: 10px;
+    border: 1px solid var(--border);
+    background: var(--surface2); color: var(--text2);
+    font-size: 13px; font-weight: 500;
+    cursor: pointer; text-align: center;
+    transition: all 0.2s; user-select: none;
+  }
+  .diff-pill.sel-easy { background: rgba(67,232,176,0.1); border-color: var(--accent3); color: var(--accent3); }
+  .diff-pill.sel-medium { background: rgba(108,99,255,0.1); border-color: var(--accent); color: var(--accent); }
+  .diff-pill.sel-hard { background: rgba(255,101,132,0.1); border-color: var(--accent2); color: var(--accent2); }
+
+  /* Range */
+  .range-label { display: flex; justify-content: space-between; align-items: center; }
+  .range-val { font-family: 'JetBrains Mono', monospace; font-size: 22px; color: var(--accent); }
+  input[type="range"] { width: 100%; accent-color: var(--accent); margin-top: 8px; cursor: pointer; }
+
+  /* PDF upload drop zone */
+  .drop-zone {
+    border: 2px dashed var(--border2);
+    border-radius: var(--radius);
+    padding: 40px 20px;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.2s;
+    background: var(--surface2);
+  }
+
+  .drop-zone:hover, .drop-zone.dragging {
+    border-color: var(--accent);
+    background: rgba(108,99,255,0.05);
+  }
+
+  .drop-zone .icon { font-size: 36px; margin-bottom: 12px; }
+  .drop-zone p { color: var(--text2); font-size: 14px; }
+  .drop-zone strong { color: var(--accent); }
+  .drop-zone #file-input { display: none; }
+
+  .file-selected {
+    background: rgba(67,232,176,0.08);
+    border: 1px solid rgba(67,232,176,0.25);
+    border-radius: 8px;
+    padding: 10px 14px;
+    font-size: 13px;
+    color: var(--accent3);
+    margin-top: 10px;
+    display: none;
+  }
+
+  .settings-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+  @media (max-width: 600px) { .settings-grid { grid-template-columns: 1fr; } .type-grid { grid-template-columns: 1fr; } }
+</style>
+</head>
+<body>
+
+<nav class="navbar">
+  <a class="nav-logo" href="/"><span>Quiz</span><span class="dot">Forge</span></a>
+  <div class="nav-links">
+    <a href="/dashboard.html" class="nav-btn nav-btn-ghost">← Dashboard</a>
+  </div>
+</nav>
+
+<div class="page-wrap">
+  <div class="container-md">
+
+    <div class="page-header">
+      <h1 class="page-title">Create Quiz</h1>
+      <p class="page-subtitle">Add your content, configure settings, and generate</p>
+    </div>
+
+    <div id="alert" class="alert alert-error" style="margin-bottom:20px"></div>
+
+    <!-- Step 1: Content -->
+    <div class="card" style="margin-bottom:20px">
+      <div style="font-size:12px;font-family:'JetBrains Mono',monospace;color:var(--accent);letter-spacing:0.08em;margin-bottom:14px">STEP 1 — CONTENT</div>
+
+      <div class="input-tabs">
+        <button class="tab-btn active" onclick="switchTab('text')">✏️ Paste Text</button>
+        <button class="tab-btn" onclick="switchTab('pdf')">📄 Upload PDF</button>
+      </div>
+
+      <div id="tab-text" class="tab-pane active">
+        <div class="field">
+          <label class="label">Your Text</label>
+          <textarea id="input-text" placeholder="Paste any article, notes, textbook content, or any text here. The AI will generate questions from it..."></textarea>
+        </div>
+      </div>
+
+      <div id="tab-pdf" class="tab-pane">
+        <div class="drop-zone" id="drop-zone" onclick="document.getElementById('file-input').click()"
+          ondragover="handleDragOver(event)" ondrop="handleDrop(event)" ondragleave="handleDragLeave(event)">
+          <input type="file" id="file-input" accept=".pdf" onchange="handleFile(this.files[0])">
+          <div class="icon">📄</div>
+          <p><strong>Click to upload</strong> or drag & drop your PDF</p>
+          <p style="font-size:12px;margin-top:4px;color:var(--text3)">PDF files only • Max 10MB</p>
+        </div>
+        <div class="file-selected" id="file-selected">✓ <span id="file-name"></span></div>
+        <div id="extract-status" style="margin-top:10px;font-size:13px;color:var(--text2)"></div>
+      </div>
+
+      <div class="field" style="margin-top:16px;margin-bottom:0">
+        <label class="label">Topic / Subject (optional)</label>
+        <input type="text" id="topic" placeholder="e.g. World War II, Photosynthesis, Python...">
+      </div>
+    </div>
+
+    <!-- Step 2: Quiz Type -->
+    <div class="card" style="margin-bottom:20px">
+      <div style="font-size:12px;font-family:'JetBrains Mono',monospace;color:var(--accent);letter-spacing:0.08em;margin-bottom:14px">STEP 2 — QUIZ TYPE</div>
+      <div class="type-grid">
+        <div class="type-card selected" data-type="mcq" onclick="selectType('mcq')">
+          <div class="icon">🔘</div>
+          <div class="title">Multiple Choice</div>
+          <div class="desc">4 options per question, pick the right one</div>
+        </div>
+        <div class="type-card" data-type="fill" onclick="selectType('fill')">
+          <div class="icon">✏️</div>
+          <div class="title">Fill in the Blank</div>
+          <div class="desc">Complete the sentence with the missing word</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Step 3: Settings -->
+    <div class="card" style="margin-bottom:24px">
+      <div style="font-size:12px;font-family:'JetBrains Mono',monospace;color:var(--accent);letter-spacing:0.08em;margin-bottom:20px">STEP 3 — SETTINGS</div>
+      <div class="settings-grid">
+        <div class="field" style="margin-bottom:0">
+          <div class="range-label">
+            <label class="label" style="margin-bottom:0">Number of Questions</label>
+            <span class="range-val" id="q-val">5</span>
+          </div>
+          <input type="range" id="num-q" min="1" max="15" value="5" oninput="document.getElementById('q-val').textContent=this.value">
+        </div>
+
+        <div class="field" style="margin-bottom:0">
+          <label class="label">Difficulty</label>
+          <div class="diff-pills">
+            <div class="diff-pill" data-d="easy" onclick="selectDiff(this)">Easy</div>
+            <div class="diff-pill sel-medium" data-d="medium" onclick="selectDiff(this)">Medium</div>
+            <div class="diff-pill" data-d="hard" onclick="selectDiff(this)">Hard</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <button class="btn btn-primary btn-full btn-lg" id="gen-btn" onclick="generateQuiz()">
+      ⚡ Generate Quiz
+    </button>
+
+  </div>
+</div>
+
+<script src="../js/api.js"></script>
+<script>
+  requireAuth();
+
+  let selectedType = "mcq";
+  let selectedDiff = "medium";
+  let activeTab = "text";
+  let pdfExtracted = "";
+
+  function switchTab(tab) {
+    activeTab = tab;
+    document.querySelectorAll(".tab-btn").forEach((b, i) => b.classList.toggle("active", (i === 0 && tab === "text") || (i === 1 && tab === "pdf")));
+    document.getElementById("tab-text").classList.toggle("active", tab === "text");
+    document.getElementById("tab-pdf").classList.toggle("active", tab === "pdf");
+  }
+
+  function selectType(type) {
+    selectedType = type;
+    document.querySelectorAll(".type-card").forEach(c => c.classList.toggle("selected", c.dataset.type === type));
+  }
+
+  function selectDiff(el) {
+    selectedDiff = el.dataset.d;
+    document.querySelectorAll(".diff-pill").forEach(p => {
+      p.className = "diff-pill";
+      if (p === el) p.classList.add("sel-" + selectedDiff);
+    });
+  }
+
+  // PDF handling
+  function handleDragOver(e) { e.preventDefault(); document.getElementById("drop-zone").classList.add("dragging"); }
+  function handleDragLeave() { document.getElementById("drop-zone").classList.remove("dragging"); }
+  function handleDrop(e) {
+    e.preventDefault();
+    document.getElementById("drop-zone").classList.remove("dragging");
+    const file = e.dataTransfer.files[0];
+    if (file) handleFile(file);
+  }
+
+  async function handleFile(file) {
+    if (!file || !file.name.endsWith(".pdf")) {
+      showAlert("alert", "Please upload a PDF file.");
+      return;
+    }
+    document.getElementById("file-name").textContent = file.name;
+    document.getElementById("file-selected").style.display = "block";
+    document.getElementById("extract-status").textContent = "⏳ Extracting text from PDF...";
+
+    const formData = new FormData();
+    formData.append("file", file);
+
+    const res = await apiUpload("/quiz/extract-pdf", formData);
+    if (res?.ok) {
+      pdfExtracted = res.data.text;
+      document.getElementById("extract-status").textContent = `✅ Extracted ${pdfExtracted.length} characters`;
+      document.getElementById("extract-status").style.color = "var(--accent3)";
+    } else {
+      document.getElementById("extract-status").textContent = "❌ " + (res?.data?.error || "Extraction failed");
+      document.getElementById("extract-status").style.color = "#fca5a5";
+    }
+  }
+
+  async function generateQuiz() {
+    let text = "";
+    if (activeTab === "text") {
+      text = document.getElementById("input-text").value.trim();
+    } else {
+      text = pdfExtracted;
+    }
+
+    if (!text || text.length < 50) {
+      showAlert("alert", activeTab === "pdf" ? "Please upload and extract a PDF first." : "Please enter at least 50 characters of text.");
+      return;
+    }
+
+    const topic = document.getElementById("topic").value.trim() || "General";
+    const numQ = document.getElementById("num-q").value;
+
+    setLoading("gen-btn", true, "Generating...");
+    const res = await apiFetch("/quiz/generate", {
+      method: "POST",
+      body: JSON.stringify({ text, num_questions: numQ, difficulty: selectedDiff, quiz_type: selectedType, topic })
+    });
+    setLoading("gen-btn", false, "⚡ Generate Quiz");
+
+    if (!res || !res.ok) {
+      showAlert("alert", res?.data?.error || "Generation failed. Try again.");
+    } else {
+      // Store quiz data and redirect
+      sessionStorage.setItem("qf_quiz", JSON.stringify({ quiz_id: res.data.quiz_id, questions: res.data.questions, difficulty: selectedDiff, type: selectedType, topic }));
+      window.location.href = "/quiz.html";
+    }
+  }
+</script>
+</body>
+</html>
